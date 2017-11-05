@@ -52,63 +52,32 @@ logic CLK_50M;
 assign CLK_50M =  CLOCK_50;
 logic reset_n;
 
+logic start_press;
 
-wire start_press;
-
-// declarations for s-RAM memory
-reg [7:0] s_addr;
-reg [7:0] s_data_in;  // not sure if these should be regs
-reg [7:0] s_data_out;
+logic [7:0] s_addr;
+logic [7:0] s_data_in;  // not sure if these should be logics
+logic [7:0] s_data_out;
 logic s_en;
-
-// counter for s-RAM memory
-reg [7:0] s_counter = 8'h00;  // AHHHHHHHHHHHHH
-
-// state
-reg [7:0] state;
 
 //=======================================================
 //  Code goes here
 //=======================================================
-
-// how do we instantiate something that only runs once?
-// how do we make it start? Do we have any user input?
-
-// state encoding
-localparam IDLE 				= 8'b0000_0000;
-localparam COLD_START 		= 8'b0001_0001;
-
-// internal state bit use
-assign s_en 					= state[0];
-
-// instantiate memory
-always_ff @(posedge CLK_50M)
-begin
-	if(s_en & s_counter <= 8'hFF)
-	begin
-		s_counter 	<= s_counter + 1'b1;
-		s_addr 		<= s_counter;
-		s_data_in 	<= s_counter;
-	end
-end
-
-// state transitions
-always_ff @(posedge CLK_50M)
-begin
-	case(state)
-		IDLE: 				if(start_press) 			state <= COLD_START;
-		COLD_START:			if(s_counter == 8'hFF) 	state <= IDLE;
-	endcase
-end
-
-
-// declare s_mem
-s_memory s_mem(.address(s_addr), .clock(CLK_50M), .data(s_data_in), .wren(s_en), .q(s_data_out));
+// philosophy: main file handles I/O, I guess
 
 // trap start press
 async_trap start_key_pulse(.async_sig(!KEY[0]), .clk(CLK_50M), .reset(1'b0), .trapped_edge(start_press));
 
+// declare s_mem
+s_memory s_mem(.address(s_addr), .clock(CLK_50M), .data(s_data_in), .wren(s_en), .q(s_data_out));
 
+// instantiate state machine
+// needs a catchier name
+rc4_state_machine rc4_fsm(	.clk(CLK_50M),
+									.start_fsm(start_press), 
+									.data_to_fsm(s_data_out), 
+									.ram_addr(s_addr),
+									.data_to_ram(s_data_in), 
+									.enable_ram(s_en));
 
 //=====================================================================================
 //
