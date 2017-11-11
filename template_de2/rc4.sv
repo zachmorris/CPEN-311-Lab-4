@@ -52,7 +52,8 @@ logic CLK_50M;
 assign CLK_50M =  CLOCK_50;
 logic reset_n;
 
-logic start_press;
+logic start_press_L1;
+logic start_press_L2;
 
 logic [7:0] s_addr;
 logic [7:0] s_data_in;  // not sure if these should be logics
@@ -60,12 +61,44 @@ logic [7:0] s_data_out;
 logic s_en;
 
 //=======================================================
-//  Code goes here
+// CODE GOES HERE
+
+reg [24:0] secret_key;
+wire [7:0] s_current_val;
+
+assign s_current_val = s_data_out;
+
+
+assign secret_key = {14'b0, SW[9:0]};
+
+/* always_ff@(posedge CLK_50M)
+begin
+	s_current_val <= s_data_out;
+end
+*/
+
+
 //=======================================================
 // philosophy: main file handles I/O, I guess
 
+
+
 // trap start press
-async_trap start_key_pulse(.async_sig(!KEY[0]), .clk(CLK_50M), .reset(1'b0), .trapped_edge(start_press));
+async_trap_and_reset_gen_1_pulse start_loop_1_pulse(
+.async_sig(!KEY[0]),
+.outclk(CLK_50M),
+.out_sync_sig(start_press_L1),
+.auto_reset(1'b1),
+.reset(1'b1));
+
+async_trap_and_reset_gen_1_pulse start_loop_2_pulse(
+.async_sig(!KEY[1]),
+.outclk(CLK_50M),
+.out_sync_sig(start_press_L2),
+.auto_reset(1'b1),
+.reset(1'b1));
+
+
 
 // declare s_mem
 s_memory s_mem(.address(s_addr), .clock(CLK_50M), .data(s_data_in), .wren(s_en), .q(s_data_out));
@@ -73,11 +106,13 @@ s_memory s_mem(.address(s_addr), .clock(CLK_50M), .data(s_data_in), .wren(s_en),
 // instantiate state machine
 // needs a catchier name
 rc4_state_machine rc4_fsm(	.clk(CLK_50M),
-									.start_fsm(start_press), 
-									.data_to_fsm(s_data_out), 
-									.ram_addr(s_addr),
-									.data_to_ram(s_data_in), 
-									.enable_ram(s_en));
+									.start_loop_1(start_press_L1),
+								   .start_loop_2(start_press_L2),
+									.data_to_fsm(s_current_val), 
+									.sram_addr(s_addr),
+									.data_to_sram(s_data_in), 
+									.enable_sram(s_en),
+									.secret_key_val(secret_key));
 
 //=====================================================================================
 //
