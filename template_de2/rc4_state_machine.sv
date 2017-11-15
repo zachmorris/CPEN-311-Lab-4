@@ -55,12 +55,17 @@ localparam L2_WAIT			= 9'b01000_0000;
 localparam L2_WAIT2			= 9'b01001_0000;
 localparam L2B_START			= 9'b01010_0000;
 localparam L2B_INC_I			= 9'b01011_0000;
-localparam L2B_INC_J			= 9'b01100_0000;
-localparam L2B_SWAP_J		= 9'b01101_0001;
-localparam L2B_SWAP_I_ADDR	= 9'b01110_0000;
-localparam L2B_SWAP_I		= 9'b01111_0001;
-localparam L2B_NEW_F			= 9'b10000_0000;
-localparam L2B_XOR_F			= 9'b10001_0010;
+localparam L2B_WAIT			= 9'b01100_0000;
+localparam L2B_INC_J			= 9'b01101_0000;
+localparam L2B_WAIT_2		= 9'b01110_0000;
+localparam L2B_SWAP_J		= 9'b01111_0001;
+localparam L2B_SWAP_I_ADDR	= 9'b10000_0000;
+localparam L2B_WAIT_3		= 9'b10001_0000;
+localparam L2B_SWAP_I		= 9'b10010_0001;
+localparam L2B_WAIT_4		= 9'b10011_0000;
+localparam L2B_NEW_F			= 9'b10100_0000;
+localparam L2B_XOR_F			= 9'b10101_0010;
+localparam L2B_WAIT_5		= 9'b10110_0000;
 
 // internal state bit use
 assign enable_sram 					= state[0];
@@ -174,13 +179,18 @@ begin
 		L2_WRITE_MEMI:		if(sram_addr == 8'hFF)	state <= L2B_START;
 								else							state <= L2_WAIT;
 		L2B_START:			if(start_loop_2b)			state <= L2B_INC_I;
-		L2B_INC_I:											state <= L2B_INC_J;
-		L2B_INC_J:											state <= L2B_SWAP_J;
+		L2B_INC_I:											state <= L2B_WAIT;
+		L2B_WAIT:											state <= L2B_INC_J;
+		L2B_INC_J:											state <= L2B_WAIT_2;
+		L2B_WAIT_2:											state <= L2B_SWAP_J;
 		L2B_SWAP_J:											state <= L2B_SWAP_I_ADDR;
-		L2B_SWAP_I_ADDR:									state <= L2B_SWAP_I;
-		L2B_SWAP_I:											state <= L2B_NEW_F;
+		L2B_SWAP_I_ADDR:									state <= L2B_WAIT_3;
+		L2B_WAIT_3:											state <= L2B_SWAP_I;
+		L2B_SWAP_I:											state <= L2B_WAIT_4;
+		L2B_WAIT_4:											state <= L2B_NEW_F;
 		L2B_NEW_F:											state <= L2B_XOR_F;
-		L2B_XOR_F:			if(k_counter == 8'h1F)	state <= IDLE;
+		L2B_XOR_F:											state <= L2B_WAIT_5;
+		L2B_WAIT_5:			if(k_counter == 8'h1F)	state <= IDLE;
 								else							state <= L2B_INC_I;
 	endcase
 end
