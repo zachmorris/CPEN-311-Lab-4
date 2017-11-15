@@ -54,6 +54,7 @@ logic reset_n;
 
 logic start_press_L1;
 logic start_press_L2;
+logic start_press_L2b;
 
 logic [7:0] s_addr;
 logic [7:0] s_data_in;  // not sure if these should be logics
@@ -98,6 +99,12 @@ async_trap_and_reset_gen_1_pulse start_loop_2_pulse(
 .auto_reset(1'b1),
 .reset(1'b1));
 
+async_trap_and_reset_gen_1_pulse start_loop_2b_pulse(
+.async_sig(!KEY[2]),
+.outclk(CLK_50M),
+.out_sync_sig(start_press_L2b),
+.auto_reset(1'b1),
+.reset(1'b1));
 
 
 // declare s_mem
@@ -108,6 +115,7 @@ s_memory s_mem(.address(s_addr), .clock(CLK_50M), .data(s_data_in), .wren(s_en),
 rc4_state_machine rc4_fsm(	.clk(CLK_50M),
 									.start_loop_1(start_press_L1),
 								   .start_loop_2(start_press_L2),
+									.start_loop_2b(start_press_L2b),
 									.data_to_fsm(s_current_val), 
 									.sram_addr(s_addr),
 									.data_to_sram(s_data_in), 
