@@ -59,13 +59,17 @@ localparam L2B_WAIT			= 9'b01100_0000;
 localparam L2B_INC_J			= 9'b01101_0000;
 localparam L2B_WAIT_2		= 9'b01110_0000;
 localparam L2B_SWAP_J		= 9'b01111_0001;
-localparam L2B_SWAP_I_ADDR	= 9'b10000_0000;
-localparam L2B_WAIT_3		= 9'b10001_0000;
-localparam L2B_SWAP_I		= 9'b10010_0001;
-localparam L2B_WAIT_4		= 9'b10011_0000;
-localparam L2B_NEW_F			= 9'b10100_0000;
-localparam L2B_XOR_F			= 9'b10101_0010;
-localparam L2B_WAIT_5		= 9'b10110_0000;
+localparam L2B_WAIT_3		= 9'b10000_0001;
+localparam L2B_SWAP_I_ADDR	= 9'b10001_0000;
+localparam L2B_WAIT_4		= 9'b10010_0000;
+localparam L2B_SWAP_I		= 9'b10011_0001;
+localparam L2B_WAIT_5		= 9'b10100_0001;
+localparam L2B_F_ADDR		= 9'b10101_0000;
+localparam L2B_WAIT_6		= 9'b10110_0000;
+localparam L2B_NEW_F			= 9'b10111_0000;
+localparam L2B_XOR_F			= 9'b11000_0010;
+localparam L2B_WAIT_7		= 9'b11001_0010;
+
 
 // internal state bit use
 assign enable_sram 					= state[0];
@@ -146,9 +150,12 @@ begin
 		end
 		L2B_SWAP_I:
 		begin
-			data_to_sram 	<= s_j;  // s[i] <= s[i]
-			s_ij 				<= s_i + s_j;
-			sram_addr		<= s_i + s_j;
+			data_to_sram 	<= s_j;  // s[i] <= s[j]
+			s_ij 				<= s_i + s_j;			
+		end
+		L2B_F_ADDR: 
+		begin
+			sram_addr		<= s_ij;
 		end
 		L2B_NEW_F: 
 		begin
@@ -183,14 +190,17 @@ begin
 		L2B_WAIT:											state <= L2B_INC_J;
 		L2B_INC_J:											state <= L2B_WAIT_2;
 		L2B_WAIT_2:											state <= L2B_SWAP_J;
-		L2B_SWAP_J:											state <= L2B_SWAP_I_ADDR;
-		L2B_SWAP_I_ADDR:									state <= L2B_WAIT_3;
-		L2B_WAIT_3:											state <= L2B_SWAP_I;
-		L2B_SWAP_I:											state <= L2B_WAIT_4;
-		L2B_WAIT_4:											state <= L2B_NEW_F;
+		L2B_SWAP_J:											state <= L2B_WAIT_3;
+		L2B_WAIT_3:											state <= L2B_SWAP_I_ADDR;
+		L2B_SWAP_I_ADDR:									state <= L2B_WAIT_4;
+		L2B_WAIT_4:											state <= L2B_SWAP_I;
+		L2B_SWAP_I:											state <= L2B_WAIT_5;
+		L2B_WAIT_5:											state <= L2B_F_ADDR;
+		L2B_F_ADDR:											state <= L2B_WAIT_6;
+		L2B_WAIT_6:											state <= L2B_NEW_F;
 		L2B_NEW_F:											state <= L2B_XOR_F;
-		L2B_XOR_F:											state <= L2B_WAIT_5;
-		L2B_WAIT_5:			if(k_counter == 8'h1F)	state <= IDLE;
+		L2B_XOR_F:											state <= L2B_WAIT_7;
+		L2B_WAIT_7:			if(k_counter == 8'h20)	state <= IDLE;
 								else							state <= L2B_INC_I;
 	endcase
 end
