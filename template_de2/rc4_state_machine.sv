@@ -10,7 +10,7 @@ input [24:0] secret_key_val,
 output reg [7:0] sram_addr,
 output reg [7:0] data_to_sram,
 output reg enable_sram,
-output [21:0] checking_key,
+output [23:0] checking_key,
 output success_light,
 output fail_light
 );
@@ -44,7 +44,7 @@ reg [7:0] dram_data;
 reg [5:0] L_counter;
 reg [21:0] M_counter;
 
-assign checking_key = M_counter;
+assign checking_key = {2'b0, M_counter};
 
 logic secret_val_select;
 
@@ -87,12 +87,12 @@ localparam L3_WAIT_READ		= 10'b011110_0000;
 localparam L3_INC_L			= 10'b011111_0000;
 localparam L3_SUCCESS		= 10'b100000_1000;
 localparam L3_FAIL			= 10'b100001_0100;
-localparam L3_INC_M			= 10'b100010_0000;
+localparam L3_INC_M			= 10'b100010_1100;
 localparam L3_ERROR			= 10'b100011_1100;
 localparam L3_WAIT_1			= 10'b100100_0000;
 localparam L3_WAIT_2			= 10'b100101_0000;
 localparam L3_WAIT_3			= 10'b100110_0000;
-
+localparam L3_WAIT_4			= 10'b100111_0000;
 
 // character constants
 localparam MAX_CHAR			= 7'h7A;
@@ -115,7 +115,7 @@ begin
 		begin
 			i_counter 		<= 0;
 			sram_addr 		<= 0;
-			M_counter 		<= 0;
+			M_counter 		<= 22'b01;
 			L_counter		<= 0;
 		end
 		L1: 
@@ -132,9 +132,9 @@ begin
 		end
 		L2_CALCJ: // now we're at address i
 		begin
-			j_var 			<= j_var + data_to_fsm + M_counter[23-((i_counter % 3)*8) -: 8];	// calculate j
+			j_var 			<= j_var + data_to_fsm + checking_key[23-((i_counter % 3)*8) -: 8];	// calculate j
 			i_mem				<= data_to_fsm; // save the current value of s[i] into i_mem
-			sram_addr		<= j_var + data_to_fsm + M_counter[23-((i_counter % 3)*8) -: 8];
+			sram_addr		<= j_var + data_to_fsm + checking_key[23-((i_counter % 3)*8) -: 8];
 		end
 		L2_PREP_MEMJ: // now we're at address j
 		begin
@@ -204,7 +204,6 @@ begin
 		begin
 			i_counter 		<= 0;
 			sram_addr 		<= 0;
-			M_counter 		<= 0;
 		end
 		L3_SET_RAM_ADDR:
 		begin
@@ -263,7 +262,8 @@ begin
 								
 		L3_SET_RAM_ADDR:									state <= L3_WAIT_1;
 		L3_WAIT_1:											state <= L3_READ_RAM;					
-		L3_READ_RAM:										state <= L3_WAIT_READ;
+		L3_READ_RAM:										state <= L3_WAIT_4;
+		L3_WAIT_4:											state <= L3_WAIT_READ;
 		L3_WAIT_READ:		if(((dram_data <= MAX_CHAR) & (dram_data >= MIN_CHAR)) | (dram_data == SPACE_CHAR))
 									if(L_counter != WORD_SIZE)						state <= L3_INC_L;
 									else													state <= L3_SUCCESS;

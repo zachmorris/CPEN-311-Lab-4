@@ -64,14 +64,14 @@ logic s_en;
 //=======================================================
 // CODE GOES HERE
 
-reg [24:0] secret_key;
+reg [23:0] secret_key;
 wire [7:0] s_current_val;
 
 assign s_current_val = s_data_out;
 
 assign secret_key = {14'b0, SW[9:0]};
 
-logic [21:0] hex_to_display;
+logic [23:0] hex_to_display;
 
 
 //=======================================================
@@ -173,7 +173,7 @@ assign Seven_Seg_Data[5] = regd_actual_7seg_output[23:20];
 assign Seven_Seg_Data[6] = regd_actual_7seg_output[27:24];
 assign Seven_Seg_Data[7] = regd_actual_7seg_output[31:28];
     
-assign actual_7seg_output = {2'b0, hex_to_display};  // seven segment display input data
+assign actual_7seg_output = hex_to_display;  // seven segment display input data
 
 
 endmodule
