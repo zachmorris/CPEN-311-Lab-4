@@ -49,7 +49,7 @@ assign checking_key = {2'b0, M_counter};
 logic secret_val_select;
 
 // state
-reg [8:0] state;
+reg [9:0] state;
 
 // state encoding
 localparam IDLE 				= 10'b000000_0000;
@@ -87,7 +87,7 @@ localparam L3_WAIT_READ		= 10'b011110_0000;
 localparam L3_INC_L			= 10'b011111_0000;
 localparam L3_SUCCESS		= 10'b100000_1000;
 localparam L3_FAIL			= 10'b100001_0100;
-localparam L3_INC_M			= 10'b100010_1100;
+localparam L3_INC_M			= 10'b100010_0000;
 localparam L3_ERROR			= 10'b100011_1100;
 localparam L3_WAIT_1			= 10'b100100_0000;
 localparam L3_WAIT_2			= 10'b100101_0000;
@@ -115,7 +115,7 @@ begin
 		begin
 			i_counter 		<= 0;
 			sram_addr 		<= 0;
-			M_counter 		<= 22'b01;
+			M_counter 		<= 0;
 			L_counter		<= 0;
 		end
 		L1: 
@@ -159,6 +159,7 @@ begin
 			i_counter 		<= 0;	
 			j_counter 		<= 0;
 			k_counter 		<= 0;
+			sram_addr		<= 0;
 		end
 		L2B_INC_I: 
 		begin
@@ -265,8 +266,10 @@ begin
 		L3_READ_RAM:										state <= L3_WAIT_4;
 		L3_WAIT_4:											state <= L3_WAIT_READ;
 		L3_WAIT_READ:		if(((dram_data <= MAX_CHAR) & (dram_data >= MIN_CHAR)) | (dram_data == SPACE_CHAR))
+								begin
 									if(L_counter != WORD_SIZE)						state <= L3_INC_L;
-									else													state <= L3_SUCCESS;
+									else state <= L3_SUCCESS;
+								end 
 								else if(M_counter != MAX_KEYVAL)					state <= L3_INC_M;
 								else if(M_counter == MAX_KEYVAL)					state <= L3_FAIL;
 								else 														state <= L3_ERROR;
