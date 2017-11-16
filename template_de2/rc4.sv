@@ -69,14 +69,9 @@ wire [7:0] s_current_val;
 
 assign s_current_val = s_data_out;
 
-
 assign secret_key = {14'b0, SW[9:0]};
 
-/* always_ff@(posedge CLK_50M)
-begin
-	s_current_val <= s_data_out;
-end
-*/
+logic [21:0] hex_to_display;
 
 
 //=======================================================
@@ -120,7 +115,10 @@ rc4_state_machine rc4_fsm(	.clk(CLK_50M),
 									.sram_addr(s_addr),
 									.data_to_sram(s_data_in), 
 									.enable_sram(s_en),
-									.secret_key_val(secret_key));
+									.secret_key_val(secret_key),
+									.checking_key(hex_to_display),
+									.success_light(LEDR[0]),
+									.fail_light(LEDR[1]));
 
 //=====================================================================================
 //
@@ -175,7 +173,7 @@ assign Seven_Seg_Data[5] = regd_actual_7seg_output[23:20];
 assign Seven_Seg_Data[6] = regd_actual_7seg_output[27:24];
 assign Seven_Seg_Data[7] = regd_actual_7seg_output[31:28];
     
-assign actual_7seg_output =  4'h0;  // seven segment display input data
+assign actual_7seg_output = {2'b0, hex_to_display};  // seven segment display input data
 
 
 endmodule

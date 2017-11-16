@@ -9,7 +9,10 @@ input [7:0] data_to_fsm,
 input [24:0] secret_key_val,
 output reg [7:0] sram_addr,
 output reg [7:0] data_to_sram,
-output reg enable_sram
+output reg enable_sram,
+output [21:0] checking_key,
+output success_light,
+output fail_light
 );
 
 // general declarations
@@ -22,7 +25,8 @@ logic [7:0] mrom_addr;
 logic [7:0] data_from_mrom;
 
 // instantiate d-RAM and m-ROM
-d_memory 		d_mem(.address(dram_addr), .clock(clk), .data(data_to_dram), .wren(enable_dram), .q(data_from_dram));
+d_memory 		d_mem(.address(dram_addr), .clock(clk), .data(data_to_dram), 
+							.wren(enable_dram), .q(data_from_dram));
 message_rom 	m_rom(.address(mrom_addr), .clock(clk), .q(data_from_mrom));
 
 // counter for s-RAM memory
@@ -36,6 +40,11 @@ reg [7:0] s_i;
 reg [7:0] s_j;
 reg [7:0] s_ij;
 reg [7:0] f_var;
+reg [7:0] dram_data;
+reg [5:0] L_counter;
+reg [21:0] M_counter;
+
+assign checking_key = M_counter;
 
 logic secret_val_select;
 
@@ -43,37 +52,60 @@ logic secret_val_select;
 reg [8:0] state;
 
 // state encoding
-localparam IDLE 				= 9'b00000_0000;
-localparam L1 					= 9'b00001_0001;
-localparam L2_START			= 9'b00010_0000;
-localparam L2_CALCJ			= 9'b00011_0000;
-localparam L2_PREP_MEMJ		= 9'b00100_0000;
-localparam L2_WRITE_MEMJ	= 9'b00101_0001;
-localparam L2_PREP_MEMI		= 9'b00110_0000;
-localparam L2_WRITE_MEMI	= 9'b00111_0001;
-localparam L2_WAIT			= 9'b01000_0000;
-localparam L2_WAIT2			= 9'b01001_0000;
-localparam L2B_START			= 9'b01010_0000;
-localparam L2B_INC_I			= 9'b01011_0000;
-localparam L2B_WAIT			= 9'b01100_0000;
-localparam L2B_INC_J			= 9'b01101_0000;
-localparam L2B_WAIT_2		= 9'b01110_0000;
-localparam L2B_SWAP_J		= 9'b01111_0001;
-localparam L2B_WAIT_3		= 9'b10000_0001;
-localparam L2B_SWAP_I_ADDR	= 9'b10001_0000;
-localparam L2B_WAIT_4		= 9'b10010_0000;
-localparam L2B_SWAP_I		= 9'b10011_0001;
-localparam L2B_WAIT_5		= 9'b10100_0001;
-localparam L2B_F_ADDR		= 9'b10101_0000;
-localparam L2B_WAIT_6		= 9'b10110_0000;
-localparam L2B_NEW_F			= 9'b10111_0000;
-localparam L2B_XOR_F			= 9'b11000_0010;
-localparam L2B_WAIT_7		= 9'b11001_0010;
+localparam IDLE 				= 10'b000000_0000;
+localparam L1 					= 10'b000001_0001;
+localparam L2_START			= 10'b000010_0000;
+localparam L2_CALCJ			= 10'b000011_0000;
+localparam L2_PREP_MEMJ		= 10'b000100_0000;
+localparam L2_WRITE_MEMJ	= 10'b000101_0001;
+localparam L2_PREP_MEMI		= 10'b000110_0000;
+localparam L2_WRITE_MEMI	= 10'b000111_0001;
+localparam L2_WAIT			= 10'b001000_0000;
+localparam L2_WAIT2			= 10'b001001_0000;
+localparam L2B_START			= 10'b001010_0000;
+localparam L2B_INC_I			= 10'b001011_0000;
+localparam L2B_WAIT			= 10'b001100_0000;
+localparam L2B_INC_J			= 10'b001101_0000;
+localparam L2B_WAIT_2		= 10'b001110_0000;
+localparam L2B_SWAP_J		= 10'b001111_0001;
+localparam L2B_WAIT_3		= 10'b010000_0001;
+localparam L2B_SWAP_I_ADDR	= 10'b010001_0000;
+localparam L2B_WAIT_4		= 10'b010010_0000;
+localparam L2B_SWAP_I		= 10'b010011_0001;
+localparam L2B_WAIT_5		= 10'b010100_0001;
+localparam L2B_F_ADDR		= 10'b010101_0000;
+localparam L2B_WAIT_6		= 10'b010110_0000;
+localparam L2B_NEW_F			= 10'b010111_0000;
+localparam L2B_XOR_F			= 10'b011000_0010;
+localparam L2B_WAIT_7		= 10'b011001_0010;
 
+localparam L3_LOAD_KEY		= 10'b011010_0000;
+localparam L3_DECRYPT		= 10'b011011_0000;
+localparam L3_SET_RAM_ADDR	= 10'b011100_0000;
+localparam L3_READ_RAM		= 10'b011101_0000;
+localparam L3_WAIT_READ		= 10'b011110_0000;
+localparam L3_INC_L			= 10'b011111_0000;
+localparam L3_SUCCESS		= 10'b100000_1000;
+localparam L3_FAIL			= 10'b100001_0100;
+localparam L3_INC_M			= 10'b100010_0000;
+localparam L3_ERROR			= 10'b100011_1100;
+localparam L3_WAIT_1			= 10'b100100_0000;
+localparam L3_WAIT_2			= 10'b100101_0000;
+localparam L3_WAIT_3			= 10'b100110_0000;
+
+
+// character constants
+localparam MAX_CHAR			= 7'h7A;
+localparam MIN_CHAR			= 7'h61;
+localparam SPACE_CHAR		= 7'h20;
+localparam MAX_KEYVAL		= 22'h3FFFFF;
+localparam WORD_SIZE			= 8'h20;
 
 // internal state bit use
 assign enable_sram 					= state[0];
 assign enable_dram 					= state[1];
+assign fail_light						= state[2];
+assign success_light					= state[3];
 
 // instantiate memory
 always_ff @(posedge clk)
@@ -83,6 +115,8 @@ begin
 		begin
 			i_counter 		<= 0;
 			sram_addr 		<= 0;
+			M_counter 		<= 0;
+			L_counter		<= 0;
 		end
 		L1: 
 		begin
@@ -98,9 +132,9 @@ begin
 		end
 		L2_CALCJ: // now we're at address i
 		begin
-			j_var 			<= j_var + data_to_fsm + secret_key_val[23-((i_counter % 3)*8) -: 8];	// calculate j
+			j_var 			<= j_var + data_to_fsm + M_counter[23-((i_counter % 3)*8) -: 8];	// calculate j
 			i_mem				<= data_to_fsm; // save the current value of s[i] into i_mem
-			sram_addr		<= j_var + data_to_fsm + secret_key_val[23-((i_counter % 3)*8) -: 8];
+			sram_addr		<= j_var + data_to_fsm + M_counter[23-((i_counter % 3)*8) -: 8];
 		end
 		L2_PREP_MEMJ: // now we're at address j
 		begin
@@ -166,7 +200,30 @@ begin
 			data_to_dram 	<= f_var ^ data_from_mrom;
 			k_counter 		<= k_counter + 8'h01;
 		end
-		
+		L3_LOAD_KEY:
+		begin
+			i_counter 		<= 0;
+			sram_addr 		<= 0;
+			M_counter 		<= 0;
+		end
+		L3_SET_RAM_ADDR:
+		begin
+			dram_addr		<= L_counter;
+		end
+		L3_READ_RAM:
+		begin
+			dram_data 		<= data_from_dram;
+		end
+		L3_INC_L:
+		begin
+			L_counter		<= L_counter + 1'b1;
+		end
+		L3_INC_M:
+		begin
+			M_counter		<= M_counter + 1'b1;
+			L_counter		<= 0;
+		end
+
 	endcase
 end
 
@@ -174,9 +231,10 @@ end
 always_ff @(posedge clk)
 begin
 	case(state)
-		IDLE: 				if(start_loop_1) 			state <= L1;
+		IDLE: 				if(start_loop_1) 			state <= L3_LOAD_KEY;
+		L3_LOAD_KEY:										state <= L1;		
 		L1:					if(sram_addr == 8'hFF) 	state <= L2_START;
-		L2_START:			if(start_loop_2)			state <= L2_WAIT;
+		L2_START:											state <= L2_WAIT;
 		L2_WAIT:												state <= L2_CALCJ;
 		L2_CALCJ:											state <= L2_WAIT2;
 		L2_WAIT2:											state <= L2_PREP_MEMJ;
@@ -185,7 +243,7 @@ begin
 		L2_PREP_MEMI:										state <= L2_WRITE_MEMI;
 		L2_WRITE_MEMI:		if(sram_addr == 8'hFF)	state <= L2B_START;
 								else							state <= L2_WAIT;
-		L2B_START:			if(start_loop_2b)			state <= L2B_INC_I;
+		L2B_START:											state <= L2B_INC_I;
 		L2B_INC_I:											state <= L2B_WAIT;
 		L2B_WAIT:											state <= L2B_INC_J;
 		L2B_INC_J:											state <= L2B_WAIT_2;
@@ -200,8 +258,25 @@ begin
 		L2B_WAIT_6:											state <= L2B_NEW_F;
 		L2B_NEW_F:											state <= L2B_XOR_F;
 		L2B_XOR_F:											state <= L2B_WAIT_7;
-		L2B_WAIT_7:			if(k_counter == 8'h20)	state <= IDLE;
+		L2B_WAIT_7:			if(k_counter == WORD_SIZE)	state <= L3_SET_RAM_ADDR;
 								else							state <= L2B_INC_I;
+								
+		L3_SET_RAM_ADDR:									state <= L3_WAIT_1;
+		L3_WAIT_1:											state <= L3_READ_RAM;					
+		L3_READ_RAM:										state <= L3_WAIT_READ;
+		L3_WAIT_READ:		if(((dram_data <= MAX_CHAR) & (dram_data >= MIN_CHAR)) | (dram_data == SPACE_CHAR))
+									if(L_counter != WORD_SIZE)						state <= L3_INC_L;
+									else													state <= L3_SUCCESS;
+								else if(M_counter != MAX_KEYVAL)					state <= L3_INC_M;
+								else if(M_counter == MAX_KEYVAL)					state <= L3_FAIL;
+								else 														state <= L3_ERROR;
+		L3_INC_L:											state <= L3_WAIT_3;
+		L3_WAIT_3:											state <= L3_SET_RAM_ADDR;
+		L3_SUCCESS:											state <= L3_SUCCESS;
+		L3_FAIL:												state <= L3_FAIL;
+		L3_INC_M:											state <= L3_WAIT_2;
+		L3_WAIT_2:											state <= L3_LOAD_KEY;
+		L3_ERROR:											state <= L3_ERROR;
 	endcase
 end
 
